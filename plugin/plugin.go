@@ -15,21 +15,21 @@ import (
 func New(secret string, upstreams []string, skipVerify bool) environ.Plugin {
 	logrus.Debugf("upstreams: %v", upstreams)
 	return &plugin{
-		secret: secret,
-		upstreams: upstreams,
+		secret:     secret,
+		upstreams:  upstreams,
 		skipVerify: skipVerify,
 	}
 }
 
 type plugin struct {
-	secret string
-	upstreams []string
+	secret     string
+	upstreams  []string
 	skipVerify bool
 }
 
 func unwrap(syncMap *sync.Map) map[string]string {
 	m := make(map[string]string)
-	syncMap.Range(func (key, val interface {}) bool {
+	syncMap.Range(func(key, val interface{}) bool {
 		m[key.(string)] = val.(string)
 		return true
 	})
