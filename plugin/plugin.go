@@ -27,46 +27,33 @@ type plugin struct {
 	skipVerify bool
 }
 
-func unwrap(syncMap *sync.Map) map[string]string {
-	m := make(map[string]string)
-	syncMap.Range(func(key, val interface{}) bool {
-		m[key.(string)] = val.(string)
-		return true
-	})
-	return m
-}
-
-func (p *plugin) fetchUpstreamEnviron(upstream string, ctx context.Context, req *environ.Request, result *sync.Map, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	logrus.Debugf("requesting from %s", upstream)
-
-	client := environ.Client(upstream, p.secret, p.skipVerify)
-	env, err := client.List(ctx, req)
-	if err != nil {
-		logrus.Warning(err)
-		return
-	}
-
-	for key, val := range env {
-		result.Store(key, val)
-	}
-
-	logrus.Debugf("%s data: %v", upstream, env)
-}
-
-func (p *plugin) List(ctx context.Context, req *environ.Request) (map[string]string, error) {
-	var result sync.Map
+func (p *plugin) List(ctx context.Context, req *environ.Request) ([]*environ.Variable, error) {
 	var wg sync.WaitGroup
+	var m sync.Mutex
+	var env []*environ.Variable
 
 	for _, upstream := range p.upstreams {
 		wg.Add(1)
-		go p.fetchUpstreamEnviron(upstream, ctx, req, &result, &wg)
+		go (func() {
+			defer wg.Done()
+
+			client := environ.Client(upstream, p.secret, p.skipVerify)
+			upstreamEnv, err := client.List(ctx, req)
+			if err != nil {
+				logrus.Warning(err)
+				return
+			}
+
+			logrus.Debugf("%s data: %v", upstream, env)
+
+			m.Lock()
+			env = append(env, upstreamEnv...)
+			m.Unlock()
+		})()
 	}
 
 	wg.Wait()
 
-	env := unwrap(&result)
 	logrus.Debugf("merged: %v", env)
 
 	return env, nil

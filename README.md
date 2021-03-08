@@ -2,7 +2,7 @@ An environment variable plugin to attach mutliple environment variable plugins t
 
 Note that all plugins uses the same secret.
 
-_Please note this project requires Drone server version 1.6 or higher._
+_Please note this project requires Drone server version 1.7 or higher._
 
 ## Usage
 
